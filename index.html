@@ -45,9 +45,12 @@
     border-radius:9px;padding:9px 11px;font-size:14px;color:var(--ink);
     font-family:inherit;outline:none;transition:.15s;}
   input:focus,select:focus,textarea:focus{border-color:var(--accent);background:#fff;}
-  textarea{resize:vertical;min-height:55px;}
+  textarea{resize:vertical;min-height:55px;overflow-y:auto;}
+  textarea.compact{min-height:38px;}
+  /* 修复 input 在长内容时可滚动 */
+  input{text-overflow:ellipsis;}
   .row{display:flex;gap:8px;}
-  .row > *{flex:1;}
+  .row > *{flex:1;min-width:0;}
 
   button{border:none;background:var(--accent);color:#fff;border-radius:9px;
     padding:10px 14px;font-size:14px;cursor:pointer;font-family:inherit;
@@ -65,6 +68,14 @@
   .status.show{display:block;}
   .status.ok{background:#eaf3ea;color:var(--ok);}
   .status.err{background:#f7e8e8;color:var(--err);}
+
+  /* 选项标签 */
+  .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;margin-bottom:4px;}
+  .chip{font-size:12px;padding:4px 10px;border-radius:14px;background:#fff;
+    border:1px solid var(--line);color:var(--sub);cursor:pointer;
+    user-select:none;transition:.15s;line-height:1.4;}
+  .chip:active{transform:scale(.95);}
+  .chip.on{background:var(--accent);color:#fff;border-color:var(--accent);}
 
   .user-card{background:linear-gradient(135deg,#fff 0%,#faf6ee 100%);
     border:1px solid var(--line);border-radius:14px;padding:18px;
@@ -148,7 +159,6 @@
 
 <main>
 
-  <!-- 创建 -->
   <section class="panel active" id="panel-make">
 
     <div class="card">
@@ -180,25 +190,30 @@
         <div><label>身高</label><input id="f_height" placeholder="例：165cm" /></div>
         <div><label>生日/星座</label><input id="f_birth" placeholder="例：白羊座" /></div>
       </div>
-      <label>身份/职业</label><input id="f_job" placeholder="例：大三美院学生" />
+      <label>身份/职业</label>
+      <textarea id="f_job" class="compact" placeholder="例：大三美院学生"></textarea>
       <label>居住地</label><input id="f_city" placeholder="例：上海" />
     </div></details>
 
     <details><summary>② 外貌特征</summary><div>
       <label>外貌关键词</label><textarea id="f_appear" placeholder="例：单眼皮, 黑眼圈"></textarea>
-      <label>发型/发色</label><input id="f_hair" placeholder="例：齐肩黑长直" />
-      <label>气质氛围</label><input id="f_aura" placeholder="例：清冷书卷气" />
+      <label>发型/发色</label>
+      <textarea id="f_hair" class="compact" placeholder="例：齐肩黑长直"></textarea>
+      <label>气质氛围</label>
+      <textarea id="f_aura" class="compact" placeholder="例：清冷书卷气"></textarea>
     </div></details>
 
     <details><summary>③ 性格</summary><div>
       <label>性格关键词</label><textarea id="f_traits" placeholder="例：表面温和, 嘴硬心软"></textarea>
       <label>MBTI/标签</label><input id="f_mbti" placeholder="例：INFJ" />
-      <label>说话风格</label><input id="f_speech" placeholder="例：语速慢, 偶尔阴阳怪气" />
+      <label>说话风格</label>
+      <textarea id="f_speech" class="compact" placeholder="例：语速慢, 偶尔阴阳怪气"></textarea>
     </div></details>
 
     <details><summary>④ 穿搭风格</summary><div>
       <label>风格关键词</label><textarea id="f_style" placeholder="例：复古文艺, 大地色"></textarea>
-      <label>常见单品</label><input id="f_items" placeholder="例：马丁靴, 帆布包" />
+      <label>常见单品</label>
+      <textarea id="f_items" class="compact" placeholder="例：马丁靴, 帆布包"></textarea>
     </div></details>
 
     <details><summary>⑤ 家庭背景</summary><div>
@@ -218,8 +233,10 @@
 
     <details><summary>⑧ 爱好 & 喜好</summary><div>
       <label>爱好</label><textarea id="f_hobby" placeholder="例：胶片摄影"></textarea>
-      <label>喜欢</label><input id="f_like" placeholder="例：雨后味道" />
-      <label>讨厌</label><input id="f_dislike" placeholder="例：吵闹, 香菜" />
+      <label>喜欢</label>
+      <textarea id="f_like" class="compact" placeholder="例：雨后味道"></textarea>
+      <label>讨厌</label>
+      <textarea id="f_dislike" class="compact" placeholder="例：吵闹, 香菜"></textarea>
     </div></details>
 
     <details><summary>⑨ 其他补充</summary><div>
@@ -235,6 +252,7 @@
         <button id="btnGen">✨ 生成完整人设（含衣橱）</button>
         <button class="ghost" id="btnClear">清空表单</button>
       </div>
+      <div class="hint">生成成功后会自动存档到「历史」</div>
       <div id="genStatus" class="status"></div>
     </div>
 
@@ -291,6 +309,85 @@ const $=id=>document.getElementById(id);
 const FIELDS=['name','gender','age','height','birth','job','city','appear','hair','aura',
   'traits','mbti','speech','style','items','family','child','teen','event','now',
   'relation','hobby','like','dislike','quirk','secret','other','tone'];
+
+/* ===== 选项配置 ===== */
+const CHIP_OPTIONS={
+  f_gender:{mode:'single',opts:['女','男','无性别','双性','跨性别']},
+  f_age:{mode:'single',opts:['14','16','18','20','22','24','26','28','30','35']},
+  f_height:{mode:'single',opts:['150cm','155cm','160cm','165cm','170cm','175cm','180cm','185cm']},
+  f_birth:{mode:'single',opts:['白羊座','金牛座','双子座','巨蟹座','狮子座','处女座','天秤座','天蝎座','射手座','摩羯座','水瓶座','双鱼座']},
+  f_job:{mode:'multi',opts:['高中生','大学生','研究生','上班族','教师','医生','护士','警察','设计师','程序员','摄影师','演员','歌手','作家','画家','咖啡师','自由职业','无业']},
+  f_city:{mode:'single',opts:['北京','上海','广州','深圳','成都','杭州','重庆','南京','西安','厦门','长沙','国外']},
+  f_appear:{mode:'multi',opts:['单眼皮','双眼皮','桃花眼','丹凤眼','锁骨清晰','黑眼圈','小酒窝','虎牙','长睫毛','痣','雀斑','薄唇','厚唇','尖下巴']},
+  f_hair:{mode:'multi',opts:['黑长直','齐肩短发','短发','双马尾','单马尾','半丸子头','卷发','烫发','挑染','染色发','刘海','无刘海','马尾']},
+  f_aura:{mode:'multi',opts:['清冷','温柔','元气','慵懒','病娇','御姐','软糯','冷淡','阳光','文艺','精英感','疏离','邻家','禁欲']},
+  f_traits:{mode:'multi',opts:['内向','外向','温柔','高冷','毒舌','腹黑','嘴硬心软','钝感','神经质','完美主义','乐观','悲观','怕生','共情力强','控制欲强','社恐','社牛','理性','感性']},
+  f_mbti:{mode:'single',opts:['INTJ','INTP','ENTJ','ENTP','INFJ','INFP','ENFJ','ENFP','ISTJ','ISFJ','ESTJ','ESFJ','ISTP','ISFP','ESTP','ESFP']},
+  f_speech:{mode:'multi',opts:['语速快','语速慢','轻声细语','直来直去','阴阳怪气','喜欢吐槽','不爱说话','礼貌用语','爱用颜文字','喜欢反问','奶音','低音']},
+  f_style:{mode:'multi',opts:['复古','甜美','酷飒','学院风','文艺','极简','性冷淡','暗黑','JK','Lolita','街头','商务','大地色系','黑白灰','森系','辣妹']},
+  f_items:{mode:'multi',opts:['马丁靴','帆布鞋','小白鞋','高跟鞋','帆布包','双肩包','银戒指','项链','耳钉','棒球帽','贝雷帽','围巾','卫衣','衬衫','风衣','牛仔裤','百褶裙']},
+  f_hobby:{mode:'multi',opts:['阅读','摄影','音乐','看电影','打游戏','画画','写作','健身','跑步','烹饪','旅行','收藏','手工','二次元','刷剧','撸猫','逛展']},
+  f_like:{mode:'multi',opts:['雨天','晴天','黑咖啡','奶茶','甜食','辣','猫','狗','古典乐','摇滚','安静','独处','夏天','冬天','深夜','清晨']},
+  f_dislike:{mode:'multi',opts:['吵闹','香菜','拥挤','加班','早起','应酬','谎言','油腻','等待','被打断','虚伪','社交']},
+};
+
+/* ===== 渲染选项 ===== */
+function renderChips(){
+  for(const [id,cfg] of Object.entries(CHIP_OPTIONS)){
+    const target=$(id);
+    if(!target||target.parentNode.querySelector(`.chips[data-for="${id}"]`))continue;
+    const wrap=document.createElement('div');
+    wrap.className='chips';
+    wrap.dataset.for=id;
+    cfg.opts.forEach(v=>{
+      const chip=document.createElement('span');
+      chip.className='chip';
+      chip.textContent=v;
+      chip.dataset.target=id;
+      chip.dataset.val=v;
+      chip.dataset.mode=cfg.mode;
+      chip.onclick=()=>handleChip(chip);
+      wrap.appendChild(chip);
+    });
+    target.parentNode.insertBefore(wrap,target.nextSibling);
+  }
+  syncChips();
+}
+function handleChip(chip){
+  const target=$(chip.dataset.target);
+  const val=chip.dataset.val;
+  const mode=chip.dataset.mode;
+  if(mode==='single'){
+    if(target.value.trim()===val){
+      target.value='';chip.classList.remove('on');
+    }else{
+      target.value=val;
+      chip.parentNode.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
+      chip.classList.add('on');
+    }
+  }else{
+    let cur=target.value.trim();
+    const parts=cur?cur.split(/[,，、]\s*/).map(s=>s.trim()).filter(Boolean):[];
+    const idx=parts.indexOf(val);
+    if(idx>=0){parts.splice(idx,1);chip.classList.remove('on');}
+    else{parts.push(val);chip.classList.add('on');}
+    target.value=parts.join('、');
+  }
+}
+function syncChips(){
+  document.querySelectorAll('.chip').forEach(c=>{
+    const target=$(c.dataset.target);if(!target)return;
+    const val=c.dataset.val;
+    const mode=c.dataset.mode;
+    const cur=target.value||'';
+    if(mode==='single'){
+      c.classList.toggle('on',cur.trim()===val);
+    }else{
+      const parts=cur.split(/[,，、]\s*/).map(s=>s.trim()).filter(Boolean);
+      c.classList.toggle('on',parts.includes(val));
+    }
+  });
+}
 
 /* ===== 开屏 ===== */
 function showSplash(){
@@ -458,7 +555,10 @@ function extractJSON(txt){
 
 /* ===== 表单 ===== */
 function collectForm(){const o={};FIELDS.forEach(k=>o[k]=$('f_'+k).value.trim());return o;}
-function fillForm(o){FIELDS.forEach(k=>{if(o[k]!==undefined)$('f_'+k).value=o[k]||'';});}
+function fillForm(o){
+  FIELDS.forEach(k=>{if(o[k]!==undefined)$('f_'+k).value=o[k]||'';});
+  syncChips();
+}
 function buildBrief(f){
   const lines=[];const push=(k,v)=>{if(v)lines.push(`【${k}】${v}`);};
   push('姓名',f.name);push('性别',f.gender);push('年龄',f.age);
@@ -477,6 +577,7 @@ $('btnClear').onclick=()=>{
   if(!confirm('清空所有表单？'))return;
   document.querySelectorAll('#panel-make input, #panel-make textarea').forEach(el=>el.value='');
   resetCharImport();
+  syncChips();
 };
 
 /* ===== 文件读取 ===== */
@@ -495,11 +596,9 @@ async function readDocx(buf){
   const docFile=zip.file('word/document.xml');
   if(!docFile)throw new Error('不是有效的 docx 文件');
   const xml=await docFile.async('string');
-  // 段落分隔
   const paragraphs=xml.split(/<\/w:p>/);
   const out=[];
   for(const p of paragraphs){
-    // 提取所有 <w:t ...>文字</w:t>
     const texts=[];
     const reg=/<w:t[^>]*>([\s\S]*?)<\/w:t>/g;
     let m;
@@ -509,21 +608,16 @@ async function readDocx(buf){
         .replace(/&quot;/g,'"').replace(/&apos;/g,"'")
         .replace(/&amp;/g,'&'));
     }
-    // 检测换行符标签
     const hasBr=/<w:br\s*\/>/.test(p);
     const line=texts.join('');
-    if(line||texts.length){
-      out.push(line+(hasBr?'\n':''));
-    }
+    if(line||texts.length){out.push(line+(hasBr?'\n':''));}
   }
   return out.join('\n').replace(/\n{3,}/g,'\n\n').trim();
 }
 async function readFileSmart(file){
   const buf=await file.arrayBuffer();
   const name=file.name.toLowerCase();
-  if(name.endsWith('.docx')){
-    return await readDocx(buf);
-  }
+  if(name.endsWith('.docx'))return await readDocx(buf);
   return await readTxtSmart(buf);
 }
 
@@ -616,7 +710,7 @@ ${rel?`【用户提供的关系/身份提示（最高优先级，必须遵守）
   }
 };
 
-/* ===== 主生成（含衣橱） ===== */
+/* ===== 主生成 ===== */
 const SYS_MAIN=`你是一位专业的角色设定撰写师，擅长把零碎的人物标签扩写成有血有肉、立体真实的人物小传。
 用户会提供按分类整理的标签关键词，请你：
 1. 完全基于用户给定的标签扩写，不要无中生有添加重大设定（小细节可合理补充）；
@@ -662,14 +756,26 @@ $('btnGen').onclick=async()=>{
     if(!txt)throw new Error('返回为空');
     if(checkBanned(txt)){bannedAlert();return;}
     _current={name:f.name,content:txt,form:f,time:Date.now(),ifLines:[]};
+    autoArchive();
     renderResult();
-    showStatus($('genStatus'),'✓ 生成成功','ok');
+    showStatus($('genStatus'),'✓ 生成成功，已自动存档到「历史」','ok');
   }catch(e){showStatus($('genStatus'),'✗ '+e.message,'err');}
   finally{
     $('btnGen').disabled=false;
     $('btnGen').innerHTML='✨ 生成完整人设（含衣橱）';
   }
 };
+
+/* 自动存档 */
+function autoArchive(){
+  if(!_current)return;
+  const arr=JSON.parse(localStorage.getItem(LS.hist)||'[]');
+  if(!_current.id)_current.id=Date.now();
+  const idx=arr.findIndex(x=>x.id===_current.id);
+  if(idx>=0)arr[idx]={..._current};
+  else arr.unshift({..._current});
+  localStorage.setItem(LS.hist,JSON.stringify(arr));
+}
 
 function renderResult(){
   if(!_current)return;
@@ -695,13 +801,13 @@ function renderResult(){
   $('result').innerHTML=`
     <div class="user-card">
       <h3>${esc(it.name)}</h3>
-      <div class="stamp">生成于 ${new Date(it.time).toLocaleString('zh-CN')}</div>
+      <div class="stamp">生成于 ${new Date(it.time).toLocaleString('zh-CN')}　已自动存档</div>
 ${esc(it.content)}
     </div>
     <div class="btn-row">
       <button class="ghost" onclick="copyResult()">复制</button>
       <button class="ghost" onclick="exportTxt(_current)">导出TXT</button>
-      <button onclick="archiveCurrent()">📥 存档</button>
+      <button onclick="autoArchive();showStatus($('genStatus'),'✓ 已更新存档','ok')">📥 更新存档</button>
     </div>
     ${ifLinesHtml}
   `;
@@ -740,13 +846,16 @@ window.genIfLine=async()=>{
     if(!out)throw new Error('返回为空');
     if(checkBanned(out)){bannedAlert();return;}
     _current.ifLines.push({scene,content:out,time:Date.now()});
+    autoArchive();
     renderResult();
-    showStatus($('genStatus'),'✓ IF 线已生成','ok');
+    showStatus($('genStatus'),'✓ IF 线已生成并自动存档','ok');
   }catch(e){showStatus($('ifStatus'),'✗ '+e.message,'err');}
 };
 window.delIf=i=>{
   if(!confirm('删除这条 IF 线？'))return;
-  _current.ifLines.splice(i,1);renderResult();
+  _current.ifLines.splice(i,1);
+  autoArchive();
+  renderResult();
 };
 
 /* ===== 导出 ===== */
@@ -774,15 +883,6 @@ window.exportTxt=it=>{
   a.href=url;a.download=`177のuser生成器_${it.name}.txt`;
   document.body.appendChild(a);a.click();
   setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},100);
-};
-window.archiveCurrent=()=>{
-  if(!_current)return;
-  const arr=JSON.parse(localStorage.getItem(LS.hist)||'[]');
-  const existIdx=arr.findIndex(x=>x.id===_current.id);
-  if(existIdx>=0){arr[existIdx]={..._current};}
-  else{_current.id=Date.now();arr.unshift({..._current});}
-  localStorage.setItem(LS.hist,JSON.stringify(arr));
-  showStatus($('genStatus'),'✓ 已存档','ok');
 };
 
 /* ===== 历史 ===== */
@@ -812,7 +912,7 @@ window.loadHist=id=>{
   if(it.form)fillForm(it.form);
   document.querySelector('.tab[data-tab="make"]').click();
   renderResult();
-  showStatus($('genStatus'),'✓ 已载入，编辑后再次「存档」会覆盖','ok');
+  showStatus($('genStatus'),'✓ 已载入，编辑后会自动同步存档','ok');
 };
 window.viewHist=id=>{
   const arr=JSON.parse(localStorage.getItem(LS.hist)||'[]');
@@ -881,6 +981,7 @@ $('modalMask').onclick=e=>{if(e.target===$('modalMask'))closeModal();};
 
 /* init */
 loadCfg();loadPresets();
+renderChips();
 showSplash();
 </script>
 </body>
